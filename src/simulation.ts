@@ -11,28 +11,28 @@ import {
 } from 'gpu-io';
 
 // Scaling factor for touch interactions.
-const TOUCH_FORCE_SCALE = 2;
-const ADD_MATERIAL_SCALE = 0.5;
+const TOUCH_FORCE_SCALE = 10;
+const ADD_MATERIAL_SCALE = 1.0;
 const MATERIAL_DECAY = 0.995;
 const MATERIAL_TOUCH_RADIUS = 50;
 // Approx avg num particles per px.
-const PARTICLE_DENSITY = 0.1;
-const MAX_NUM_PARTICLES = 100000;
+const PARTICLE_DENSITY = 20.;
+const MAX_NUM_PARTICLES = 5000000;
 // How long do the particles last before they are reset.
 // If we don't have then reset they tend to clump up.
-const PARTICLE_LIFETIME = 1000;
+const PARTICLE_LIFETIME = 10000;
 // How many steps to compute the zero pressure field.
-const NUM_JACOBI_STEPS = 5;
+const NUM_JACOBI_STEPS = 25;
 const PRESSURE_CALC_ALPHA = -1;
-const PRESSURE_CALC_BETA = 0.25;
+const PRESSURE_CALC_BETA = .25;
 export const PARAMS = {
 	VELOCITY_DECAY: 1,
 };
 const VELOCITY_TOUCH_RADIUS = 30;
 // Compute the velocity at a lower resolution to increase efficiency.
-const VELOCITY_SCALE_FACTOR = 8;
+const VELOCITY_SCALE_FACTOR = 1;
 // Put a speed limit on velocity, otherwise touch interactions get out of control.
-const MAX_VELOCITY = 30;
+const MAX_VELOCITY = 15;
 // We are storing abs position (2 components) and displacements (2 components) in this buffer.
 // This decreases error when rendering to half float.
 const POSITION_NUM_COMPONENTS = 4;
@@ -56,7 +56,7 @@ const velocityState = new GPULayer(composer, {
 	name: 'velocity',
 	dimensions: [Math.ceil(width / VELOCITY_SCALE_FACTOR), Math.ceil(height / VELOCITY_SCALE_FACTOR)],
 	type: FLOAT,
-	filter: LINEAR,
+	filter: NEAREST,
 	numComponents: 2,
 	wrapX: REPEAT,
 	wrapY: REPEAT,
@@ -263,7 +263,7 @@ const renderParticles = new GPUProgram(composer, {
 		vec2 velocity = texture(u_velocity, v_uv).xy;
 		// Show the fastest regions with darker color.
 		float multiplier = clamp(dot(velocity, velocity) * 0.05 + 0.7, 0.0, 1.0);
-		out_color = vec4(0, 0, 0.2, opacity * multiplier);
+		out_color = vec4(0.95, 0.95, 1.0, clamp(opacity*0.2, 0., 1.0) * clamp(length(velocity)*0.1, 0.0, 1.0));
 	}`,
 	uniforms: [
 		{
@@ -356,10 +356,10 @@ const advectParticles = new GPUProgram(composer, {
 const renderMaterial = new GPUProgram(composer, {
 	name: 'renderMaterial',
 	fragmentShader: `
-	#define BACKGROUND vec3(0.98, 0.922, 0.843)
-	#define COLOR1 vec3(0.925, 0, 0.55)
-	#define COLOR2 vec3(0.0, 0.70, 0.63)
-	#define COLOR3 vec3(0.52, 0.81, 0.70)
+	#define BACKGROUND vec3(0.0)
+	#define COLOR1 vec3(0.925, 0.95, 1.0)
+	#define COLOR2 vec3(0.0)
+	#define COLOR3 vec3(0.95, 0.95, 1.0)
 	#define NUM_COLORS 3.0
 
 	in vec2 v_uv;
